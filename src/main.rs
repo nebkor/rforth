@@ -25,12 +25,12 @@ fn main() {
 
     let mut p_dict = Pdict::new();
 
-    let n_dup = Box::new(|mut s: &mut STACK| {
+    let p_dup = Box::new(|mut s: &mut STACK| {
         let t = s[0].clone();
         s.push(t);
     });
 
-    let n_star = Box::new(|mut s: &mut STACK| {
+    let p_star = Box::new(|mut s: &mut STACK| {
         let p1 = s.pop().unwrap();
         let p2 = s.pop().unwrap();
         let v1: f64;
@@ -53,19 +53,20 @@ fn main() {
         s.push(TypedToken::Num(prod));
     });
 
+    // let p_colon = Box::new(|mut s: &mut)
+
     let dup_string = "DUP".to_string();
     let star_string = "*".to_string();
 
-    p_dict.insert(dup_string.clone(), n_dup);
+    p_dict.insert(dup_string.clone(), p_dup);
     n_dict.insert(dup_string.clone(), Word::Primitive(dup_string));
 
-    p_dict.insert(star_string.clone(), n_star);
+    p_dict.insert(star_string.clone(), p_star);
     n_dict.insert(star_string.clone(), Word::Primitive(star_string));
 
     n_stack = process_input("2 DUP *".to_string(), n_stack, n_dict, &p_dict);
 
     println!("stack is now {:?}", n_stack);
-
 }
 
 
