@@ -64,7 +64,14 @@ fn main() {
     p_dict.insert(star_string.clone(), p_star);
     n_dict.insert(star_string.clone(), Word::Primitive(star_string));
 
-    n_stack = process_input("2 DUP *".to_string(), n_stack, n_dict, &p_dict);
+    let square_stack: STACK = vec!["DUP".to_string(), "*".to_string()]
+        .iter()
+        .map(|x| mk_typedtoken(x.to_string()))
+        .collect();
+
+    n_dict.insert("SQUARED".to_string(), Word::Compound(square_stack));
+
+    n_stack = process_input("2 DUP * SQUARED".to_string(), n_stack, n_dict, &p_dict);
 
     println!("stack is now {:?}", n_stack);
 }
