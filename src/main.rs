@@ -64,24 +64,24 @@ fn main() {
     p_dict.insert(star_string.clone(), p_star);
     n_dict.insert(star_string.clone(), Word::Primitive(star_string));
 
-    let square_stack: STACK = vec!["DUP".to_string(), "*".to_string()]
+    let square_stack: STACK = vec!["DUP", "*"]
         .iter()
-        .map(|x| mk_typedtoken(x.to_string()))
+        .map(|x| mk_typedtoken(x))
         .collect();
 
     n_dict.insert("SQUARED".to_string(), Word::Compound(square_stack));
 
-    n_stack = process_input("2 DUP * SQUARED".to_string(), n_stack, n_dict, &p_dict);
+    n_stack = process_input("2 DUP * SQUARED", n_stack, n_dict, &p_dict);
 
     println!("stack is now {:?}", n_stack);
 }
 
 
-fn mk_typedtoken(t: String) -> TypedToken {
+fn mk_typedtoken(t: &str) -> TypedToken {
     let n = t.parse::<f64>();
     match n {
         Ok(n) => TypedToken::Num(n),
-        Err(_) => TypedToken::Word(t),
+        Err(_) => TypedToken::Word(t.to_owned()),
     }
 }
 
@@ -92,28 +92,29 @@ fn process_tokens(input: &STACK, mut stack: &mut STACK, mut dict: &mut DICT, pma
 }
 
 fn process_token(input: &TypedToken, mut stack: &mut STACK, mut dict: &mut DICT, pmap: &Pdict) {
-    match input.clone() {
+    match *input {
         TypedToken::Num(_) => {
             stack.push(input.clone());
         }
-        TypedToken::Word(w) => {
-            let dw: Word = dict.get(&w).unwrap().clone();
+        TypedToken::Word(ref w) => {
+            let dw = dict.get(w).cloned();
             match dw {
-                Word::Primitive(ref p) => {
+                Some(Word::Primitive(ref p)) => {
                     (pmap.get(p).unwrap())(stack);
                 }
-                Word::Compound(ref c) => {
+                Some(Word::Compound(ref c)) => {
                     process_tokens(&c, stack, dict, pmap);
                 }
+                None => panic!(),
             }
         }
     }
 }
 
-fn process_input(input: String, mut stack: STACK, mut dict: DICT, pmap: &Pdict) -> STACK {
-    let toks = input.split_whitespace().map(|x| mk_typedtoken(x.to_string())).collect::<STACK>();
+fn process_input(input: &str, mut stack: STACK, mut dict: DICT, pmap: &Pdict) -> STACK {
+    let toks = input.split_whitespace().map(|x| mk_typedtoken(x)).collect::<STACK>();
 
     process_tokens(&toks, &mut stack, &mut dict, pmap);
 
-    stack.clone()
+    stack
 }
