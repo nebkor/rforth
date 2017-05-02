@@ -1,36 +1,41 @@
 use std::collections::HashMap;
 
 type TOK = String;
-type DICT = HashMap<TOK, Word>;
-type STACK = Vec<TypedToken>;
+type Fdict = HashMap<TOK, DictEntry>;
+type Fstack = Vec<TypedToken>;
 
-type Pdict = HashMap<String, Box<Fn(&mut STACK)>>;
+type Pdict = HashMap<String, Box<Fn(&mut Fstack)>>;
+
+struct ForthDict {
+    fdict: Fdict,
+    pdict: Pdict,
+}
 
 #[derive(Clone)]
-enum Word {
+enum DictEntry {
     Primitive(String),
-    Compound(STACK),
+    Compound(Fstack),
+    Str(String),
 }
 
 #[derive(Clone, Debug)]
 enum TypedToken {
-    Word(TOK),
-    // Str(String),
+    Entry(TOK),
     Num(f64),
 }
 
 fn main() {
-    let mut n_stack = STACK::new();
-    let mut n_dict = DICT::new();
+    let mut n_stack = Fstack::new();
+    let mut n_dict = Fdict::new();
 
     let mut p_dict = Pdict::new();
 
-    let p_dup = Box::new(|mut s: &mut STACK| {
+    let p_dup = Box::new(|mut s: &mut Fstack| {
         let t = s[0].clone();
         s.push(t);
     });
 
-    let p_star = Box::new(|mut s: &mut STACK| {
+    let p_star = Box::new(|mut s: &mut Fstack| {
         let p1 = s.pop().unwrap();
         let p2 = s.pop().unwrap();
         let v1: f64;
@@ -53,23 +58,26 @@ fn main() {
         s.push(TypedToken::Num(prod));
     });
 
-    // let p_colon = Box::new(|mut s: &mut)
+    let p_colon = Box::new(|mut s: &mut Fstack| {
+        unimplemented!();
+    });
 
     let dup_string = "DUP".to_string();
     let star_string = "*".to_string();
+    let colon_string = ":".to_string();
 
     p_dict.insert(dup_string.clone(), p_dup);
-    n_dict.insert(dup_string.clone(), Word::Primitive(dup_string));
+    n_dict.insert(dup_string.clone(), DictEntry::Primitive(dup_string));
 
     p_dict.insert(star_string.clone(), p_star);
-    n_dict.insert(star_string.clone(), Word::Primitive(star_string));
+    n_dict.insert(star_string.clone(), DictEntry::Primitive(star_string));
 
-    let square_stack: STACK = vec!["DUP", "*"]
+    let square_stack: Fstack = vec!["DUP", "*"]
         .iter()
         .map(|x| mk_typedtoken(x))
         .collect();
 
-    n_dict.insert("SQUARED".to_string(), Word::Compound(square_stack));
+    n_dict.insert("SQUARED".to_string(), DictEntry::Compound(square_stack));
 
     n_stack = process_input("2 DUP * SQUARED", n_stack, n_dict, &p_dict);
 
@@ -81,38 +89,45 @@ fn mk_typedtoken(t: &str) -> TypedToken {
     let n = t.parse::<f64>();
     match n {
         Ok(n) => TypedToken::Num(n),
-        Err(_) => TypedToken::Word(t.to_owned()),
+        Err(_) => TypedToken::Entry(t.to_owned()),
     }
 }
 
-fn process_tokens(input: &STACK, mut stack: &mut STACK, mut dict: &mut DICT, pmap: &Pdict) {
-    for i in input.into_iter() {
-        process_token(i, stack, dict, pmap);
+fn process_tokens(input: &Fstack, mut stack: &mut Fstack, mut dict: &mut Fdict, pmap: &Pdict) {
+    for i in input.iter() {
+        process_token(&i, stack, dict, pmap);
     }
 }
 
-fn process_token(input: &TypedToken, mut stack: &mut STACK, mut dict: &mut DICT, pmap: &Pdict) {
+fn process_token(input: &TypedToken, mut stack: &mut Fstack, mut dict: &mut Fdict, pmap: &Pdict) {
     match *input {
         TypedToken::Num(_) => {
             stack.push(input.clone());
         }
-        TypedToken::Word(ref w) => {
+        TypedToken::Entry(ref w) => {
             let dw = dict.get(w).cloned();
             match dw {
-                Some(Word::Primitive(ref p)) => {
+                Some(DictEntry::Primitive(ref p)) => {
                     (pmap.get(p).unwrap())(stack);
                 }
-                Some(Word::Compound(ref c)) => {
-                    process_tokens(&c, stack, dict, pmap);
+                Some(DictEntry::Compound(ref c)) => {
+                    process_tokens(c, stack, dict, pmap);
                 }
-                None => panic!(),
+                Some(DictEntry::Str(_)) => {
+                    stack.push(input.clone());
+                }
+                None => {
+                    match dict.insert(w.clone(), DictEntry::Str(w.clone())) {
+                        _ => {}
+                    }
+                }
             }
         }
     }
 }
 
-fn process_input(input: &str, mut stack: STACK, mut dict: DICT, pmap: &Pdict) -> STACK {
-    let toks = input.split_whitespace().map(|x| mk_typedtoken(x)).collect::<STACK>();
+fn process_input(input: &str, mut stack: Fstack, mut dict: Fdict, pmap: &Pdict) -> Fstack {
+    let mut toks = input.split_whitespace().map(|x| mk_typedtoken(x)).collect::<Fstack>();
 
     process_tokens(&toks, &mut stack, &mut dict, pmap);
 
